@@ -112,6 +112,10 @@ const AP_Param::GroupInfo SITL::var_info2[] = {
     AP_GROUPINFO("ARSPD2_FAIL", 11, SITL,  arspd2_fail, 0),
     AP_GROUPINFO("ARSPD2_FAILP",12, SITL,  arspd2_fail_pressure, 0),
     AP_GROUPINFO("ARSPD2_PITOT",13, SITL,  arspd2_fail_pitot_pressure, 0),
+    AP_SUBGROUPINFO(sprayer_sim, "SPR", 14, SITL, Sprayer),
+    AP_SUBGROUPINFO(gripper_sim, "GRP", 15, SITL, Gripper_Servo),
+    AP_SUBGROUPINFO(gripper_epm_sim, "GRP", 16, SITL, Gripper_EPM),
+
     AP_GROUPEND
 };
     
