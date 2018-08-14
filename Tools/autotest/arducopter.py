@@ -1903,6 +1903,17 @@ class AutoTestCopter(AutoTest):
             # wait for disarm
             self.mav.motors_disarmed_wait()
 
+            self.run_test("Test setpoint position",
+                          lambda: self.test_set_position_global_int(test_alt=True, test_heading=True, test_yaw_rate=True))
+            self.run_test("Test setpoint velocity",
+                          lambda: self.test_set_velocity_global_int(test_vz=True, test_heading=True, test_yaw_rate=True))
+
+            # RTL
+            self.run_test("RTL after Guided test", self.fly_RTL)
+
+            # wait for disarm
+            self.mav.motors_disarmed_wait()
+
             '''vision position''' # expects vehicle to be disarmed
             self.run_test("Fly Vision Position", self.fly_vision_position)
 
