@@ -108,6 +108,16 @@ class NotAchievedException(ErrorException):
     pass
 
 
+class YawSpeedNotAchievedException(NotAchievedException):
+    """Thrown when fails to achieve given yaw speed."""
+    pass
+
+
+class SpeedVectorNotAchievedException(NotAchievedException):
+    """Thrown when fails to achieve given speed vector."""
+    pass
+
+
 class PreconditionFailedException(ErrorException):
     """Thrown when a precondition for a test is not met"""
     pass
@@ -793,6 +803,66 @@ class AutoTest(ABC):
                 return True
         self.progress("Failed to attain heading %u" % heading)
         raise WaitHeadingTimeout()
+
+    def wait_yaw_speed(self, target_yaw_speed, target_accuracy=0.2, maintain_target_time=5, timeout=30, the_function=None):
+        """Wait for a given yaw speed in degrees."""
+        tstart = self.get_sim_time()
+        duration_start = None
+        mean_yaw_rate = 0.0
+        last_yaw_rate = 0.0
+        counter = 0.0
+        self.progress("Waiting for yaw speed of %d" % target_yaw_speed)
+        while self.get_sim_time() < tstart + timeout:
+            if the_function is not None:
+                the_function()
+            m = self.mav.recv_match(type='ATTITUDE', blocking=True)
+            last_yaw_rate = math.degrees(m.yawspeed)
+            if math.fabs(last_yaw_rate - target_yaw_speed) <= target_accuracy:
+                mean_yaw_rate += last_yaw_rate
+                counter += 1.0
+                if duration_start is None:
+                    duration_start = self.get_sim_time()
+                if self.get_sim_time() - duration_start > maintain_target_time:
+                    self.progress("Attained yaw speed %f" % (mean_yaw_rate / counter))
+                    return True
+            else:
+                duration_start = None
+                mean_yaw_rate = 0.0
+                counter = 0.0
+        self.progress("Failed to attain yaw speed expect %f, reach %f" % (target_yaw_speed, (mean_yaw_rate / counter) if mean_yaw_rate != 0.0 else last_yaw_rate))
+        raise YawSpeedNotAchievedException()
+
+    def wait_speed_vector(self, target_vx, target_vy, target_vz, target_accuracy=0.2, maintain_target_time=5, timeout=30, the_function=None):  # todo improve to be able to pass only one target
+        """Wait for a given speed vector."""
+        tstart = self.get_sim_time()
+        duration_start = None
+        mean_vx = 0.0
+        mean_vy = 0.0
+        mean_vz = 0.0
+        counter = 0.0
+        self.progress("Waiting for speed vector of %f, %f, %f" % (target_vx, target_vy, target_vz))
+        while self.get_sim_time() < tstart + timeout:
+            if the_function is not None:
+                the_function()
+            m = self.mav.recv_match(type='LOCAL_POSITION_NED', blocking=True)
+            if math.fabs(m.vx - target_vx) <= target_accuracy and math.fabs(m.vy - target_vy) <= target_accuracy and math.fabs(m.vz - target_vz) <= target_accuracy:
+                mean_vx += m.vx
+                mean_vy += m.vy
+                mean_vz += m.vz
+                counter += 1.0
+                if duration_start is None:
+                    duration_start = self.get_sim_time()
+                if self.get_sim_time() - duration_start > maintain_target_time:
+                    self.progress("Attained speed vector %f, %f, %f" % (mean_vx / counter, mean_vy / counter, mean_vz / counter))
+                    return True
+            else:
+                duration_start = None
+                mean_vx = 0.0
+                mean_vy = 0.0
+                mean_vz = 0.0
+                counter = 0.0
+        self.progress("Failed to attain speed vector %f, %f, %f" % (target_vx, target_vy, target_vz))
+        raise SpeedVectorNotAchievedException()
 
     def wait_distance(self, distance, accuracy=5, timeout=30):
         """Wait for flight of a given distance."""
