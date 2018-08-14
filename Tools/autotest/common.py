@@ -11,6 +11,13 @@ import pexpect
 from pymavlink import mavwp, mavutil
 from pysim import util, vehicleinfo
 
+MAVLINK_SET_POS_TYPE_MASK_POS_IGNORE = ((1 << 0) | (1 << 1) | (1 << 2))
+MAVLINK_SET_POS_TYPE_MASK_VEL_IGNORE = ((1 << 3) | (1 << 4) | (1 << 5))
+MAVLINK_SET_POS_TYPE_MASK_ACC_IGNORE = ((1 << 6) | (1 << 7) | (1 << 8))
+MAVLINK_SET_POS_TYPE_MASK_FORCE = (1 << 9)
+MAVLINK_SET_POS_TYPE_MASK_YAW_IGNORE = (1 << 10)
+MAVLINK_SET_POS_TYPE_MASK_YAW_RATE_IGNORE = (1 << 11)
+
 # a list of pexpect objects to read while waiting for
 # messages. This keeps the output to stdout flowing
 expect_list = []
