@@ -790,18 +790,36 @@ class AutoTest(ABC):
         self.progress("Failed to attain pitch %d" % pitch)
         raise WaitPitchTimeout()
 
-    def wait_heading(self, heading, accuracy=5, timeout=30):
+    def wait_heading(self, heading, accuracy=5, maintain_target_time=0, timeout=30, the_function=None):
         """Wait for a given heading."""
         tstart = self.get_sim_time()
+        duration_start = None
+        mean_heading = 0.0
+        last_heading = 0.0
+        counter = 0.0
         self.progress("Waiting for heading %u with accuracy %u" %
                       (heading, accuracy))
         while self.get_sim_time() < tstart + timeout:
+            if the_function is not None:
+                the_function()
             m = self.mav.recv_match(type='VFR_HUD', blocking=True)
-            self.progress("Heading %u" % m.heading)
-            if math.fabs(m.heading - heading) <= accuracy:
-                self.progress("Attained heading %u" % heading)
-                return True
-        self.progress("Failed to attain heading %u" % heading)
+            last_heading = m.heading
+            if math.fabs(last_heading - heading) <= accuracy or heading <= accuracy and math.fabs(m.heading - 360) <= accuracy:
+                mean_heading += last_heading
+                counter += 1.0
+                if duration_start is None:
+                    duration_start = self.get_sim_time()
+                if self.get_sim_time() - duration_start > maintain_target_time:
+                    if heading >= accuracy:
+                        self.progress("Attained heading %f" % (mean_heading / counter))
+                    else:
+                        self.progress("Attained heading %f" % m.heading)
+                    return True
+            else:
+                duration_start = None
+                mean_heading = 0.0
+                counter = 0.0
+        self.progress("Failed to attain heading %u, reach %f" % (heading, (mean_heading / counter) if mean_heading != 0.0 else last_heading))
         raise WaitHeadingTimeout()
 
     def wait_yaw_speed(self, target_yaw_speed, target_accuracy=0.2, maintain_target_time=5, timeout=30, the_function=None):
