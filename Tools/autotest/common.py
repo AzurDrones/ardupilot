@@ -18,6 +18,13 @@ MAVLINK_SET_POS_TYPE_MASK_FORCE = (1 << 9)
 MAVLINK_SET_POS_TYPE_MASK_YAW_IGNORE = (1 << 10)
 MAVLINK_SET_POS_TYPE_MASK_YAW_RATE_IGNORE = (1 << 11)
 
+MAV_FRAMES = {"MAV_FRAME_GLOBAL": mavutil.mavlink.MAV_FRAME_GLOBAL,
+              "MAV_FRAME_GLOBAL_INT": mavutil.mavlink.MAV_FRAME_GLOBAL_INT,
+              "MAV_FRAME_GLOBAL_RELATIVE_ALT": mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT,
+              "MAV_FRAME_GLOBAL_RELATIVE_ALT_INT": mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT_INT,
+              "MAV_FRAME_GLOBAL_TERRAIN_ALT": mavutil.mavlink.MAV_FRAME_GLOBAL_TERRAIN_ALT,
+              "MAV_FRAME_GLOBAL_TERRAIN_ALT_INT": mavutil.mavlink.MAV_FRAME_GLOBAL_TERRAIN_ALT_INT}
+
 # a list of pexpect objects to read while waiting for
 # messages. This keeps the output to stdout flowing
 expect_list = []
