@@ -1137,6 +1137,251 @@ class AutoTest(ABC):
             raise NotAchievedException()
         # TODO : add failure test : arming check, wrong mode; Test arming magic; Same for disarm
 
+    def test_set_position_global_int(self, test_alt=True, test_heading=False, test_yaw_rate=False, timeout=100):
+        """Test set position message in guided mode."""
+        self.set_parameter("FS_GCS_ENABLE", 0)
+        self.set_throttle_zero()
+        self.mavproxy.send('mode guided\n')
+        self.wait_mode('GUIDED')
+        self.wait_ready_to_arm()
+        self.arm_vehicle()
+
+        if self.mav.mav_type in [mavutil.mavlink.MAV_TYPE_QUADROTOR,
+                                 mavutil.mavlink.MAV_TYPE_HELICOPTER,
+                                 mavutil.mavlink.MAV_TYPE_HEXAROTOR,
+                                 mavutil.mavlink.MAV_TYPE_OCTOROTOR,
+                                 mavutil.mavlink.MAV_TYPE_COAXIAL,
+                                 mavutil.mavlink.MAV_TYPE_TRICOPTER,
+                                 mavutil.mavlink.MAV_TYPE_SUBMARINE]:
+            self.user_takeoff(alt_min=50)
+
+        targetpos = self.mav.location()
+        wp_accuracy = None
+        if self.mav.mav_type in [mavutil.mavlink.MAV_TYPE_QUADROTOR,
+                                 mavutil.mavlink.MAV_TYPE_HELICOPTER,
+                                 mavutil.mavlink.MAV_TYPE_HEXAROTOR,
+                                 mavutil.mavlink.MAV_TYPE_OCTOROTOR,
+                                 mavutil.mavlink.MAV_TYPE_COAXIAL,
+                                 mavutil.mavlink.MAV_TYPE_TRICOPTER,
+                                 mavutil.mavlink.MAV_TYPE_SUBMARINE]:
+            wp_accuracy = self.get_parameter("WPNAV_RADIUS", retry=2)
+            wp_accuracy = wp_accuracy * 0.01  # cm to m
+        if self.mav.mav_type in [mavutil.mavlink.MAV_TYPE_FIXED_WING,
+                                 mavutil.mavlink.MAV_TYPE_GROUND_ROVER,
+                                 mavutil.mavlink.MAV_TYPE_SURFACE_BOAT]:
+            wp_accuracy = self.get_parameter("WP_RADIUS", retry=2)
+        if wp_accuracy is None:
+            raise ValueError()
+
+        def to_alt_frame(alt, mav_frame):
+            if mav_frame in ["MAV_FRAME_GLOBAL_RELATIVE_ALT",
+                              "MAV_FRAME_GLOBAL_RELATIVE_ALT_INT",
+                              "MAV_FRAME_GLOBAL_TERRAIN_ALT",
+                              "MAV_FRAME_GLOBAL_TERRAIN_ALT_INT"]:
+                return alt - self.homeloc.alt
+            else:
+                return alt
+
+        def send_target_position(lat, lng, alt, mav_frame):
+            self.mav.mav.set_position_target_global_int_send(
+                0,  # timestamp
+                1,  # target system_id
+                1,  # target component id
+                mav_frame,
+                MAVLINK_SET_POS_TYPE_MASK_VEL_IGNORE |
+                MAVLINK_SET_POS_TYPE_MASK_ACC_IGNORE |
+                MAVLINK_SET_POS_TYPE_MASK_FORCE |
+                MAVLINK_SET_POS_TYPE_MASK_YAW_IGNORE |
+                MAVLINK_SET_POS_TYPE_MASK_YAW_RATE_IGNORE,
+                lat * 1.0e7,  # lat
+                lng * 1.0e7,  # lon
+                alt,  # alt
+                0,  # vx
+                0,  # vy
+                0,  # vz
+                0,  # afx
+                0,  # afy
+                0,  # afz
+                0,  # yaw
+                0,  # yawrate
+            )
+        for frame_name, frame in MAV_FRAMES.items():
+            self.start_test("Testing Set Position in %s" % frame_name)
+
+            targetpos.lat += 0.0001
+            if test_alt:
+                targetpos.alt += 5
+            send_target_position(targetpos.lat, targetpos.lng, to_alt_frame(targetpos.alt, frame_name), frame)
+            if not self.wait_location(targetpos, accuracy=wp_accuracy, timeout=timeout,
+                                      target_altitude=(targetpos.alt if test_alt else None),
+                                      height_accuracy=2):
+                raise NotAchievedException()
+
+            targetpos.lng += 0.0001
+            if test_alt:
+                targetpos.alt -= 5
+            send_target_position(targetpos.lat, targetpos.lng, to_alt_frame(targetpos.alt, frame_name), frame)
+            if not self.wait_location(targetpos, accuracy=wp_accuracy, timeout=timeout,
+                                      target_altitude=(targetpos.alt if test_alt else None),
+                                      height_accuracy=2):
+                raise NotAchievedException()
+
+            targetpos.lat -= 0.0001
+            if test_alt:
+                targetpos.alt += 5
+            send_target_position(targetpos.lat, targetpos.lng, to_alt_frame(targetpos.alt, frame_name), frame)
+            if not self.wait_location(targetpos, accuracy=wp_accuracy, timeout=timeout,
+                                      target_altitude=(targetpos.alt if test_alt else None),
+                                      height_accuracy=2):
+                raise NotAchievedException()
+
+            targetpos.lng -= 0.0001
+            if test_alt:
+                targetpos.alt -= 5
+            send_target_position(targetpos.lat, targetpos.lng, to_alt_frame(targetpos.alt, frame_name), frame)
+            if not self.wait_location(targetpos, accuracy=wp_accuracy, timeout=timeout,
+                                      target_altitude=(targetpos.alt if test_alt else None),
+                                      height_accuracy=2):
+                raise NotAchievedException()
+
+            targetpos.lng += 0.0001
+            if test_alt:
+                targetpos.alt += 5
+            send_target_position(targetpos.lat, targetpos.lng, to_alt_frame(targetpos.alt, frame_name), frame)
+            if not self.wait_location(targetpos, accuracy=wp_accuracy, timeout=timeout,
+                                      target_altitude=(targetpos.alt if test_alt else None),
+                                      height_accuracy=2):
+                raise NotAchievedException()
+
+            targetpos.lng -= 0.0001
+            if test_alt:
+                targetpos.alt -= 5
+            send_target_position(targetpos.lat, targetpos.lng, to_alt_frame(targetpos.alt, frame_name), frame)
+            if not self.wait_location(targetpos, accuracy=wp_accuracy, timeout=timeout,
+                                      target_altitude=(targetpos.alt if test_alt else None),
+                                      height_accuracy=2):
+                raise NotAchievedException()
+
+            if test_heading:
+                self.start_test("Testing Yaw targetting in %s" % frame_name)
+
+                targetpos.lat += 0.0001
+                if test_alt:
+                    targetpos.alt += 5
+                self.mav.mav.set_position_target_global_int_send(
+                    0,  # timestamp
+                    1,  # target system_id
+                    1,  # target component id
+                    frame,
+                    MAVLINK_SET_POS_TYPE_MASK_VEL_IGNORE |
+                    MAVLINK_SET_POS_TYPE_MASK_ACC_IGNORE |
+                    MAVLINK_SET_POS_TYPE_MASK_FORCE |
+                    MAVLINK_SET_POS_TYPE_MASK_YAW_RATE_IGNORE,
+                    targetpos.lat * 1.0e7,  # lat
+                    targetpos.lng * 1.0e7,  # lon
+                    to_alt_frame(targetpos.alt, frame_name),  # alt
+                    0,  # vx
+                    0,  # vy
+                    0,  # vz
+                    0,  # afx
+                    0,  # afy
+                    0,  # afz
+                    math.radians(42),  # yaw
+                    0,  # yawrate
+                )
+                if not self.wait_location(targetpos, accuracy=wp_accuracy, timeout=timeout,
+                                          target_altitude=(targetpos.alt if test_alt else None),
+                                          height_accuracy=2):
+                    raise NotAchievedException()
+                if not self.wait_heading(42, maintain_target_time=5, timeout=timeout):
+                    raise NotAchievedException()
+
+                targetpos.lat -= 0.0001
+                if test_alt:
+                    targetpos.alt -= 5
+                self.mav.mav.set_position_target_global_int_send(
+                    0,  # timestamp
+                    1,  # target system_id
+                    1,  # target component id
+                    frame,
+                    MAVLINK_SET_POS_TYPE_MASK_VEL_IGNORE |
+                    MAVLINK_SET_POS_TYPE_MASK_ACC_IGNORE |
+                    MAVLINK_SET_POS_TYPE_MASK_FORCE |
+                    MAVLINK_SET_POS_TYPE_MASK_YAW_RATE_IGNORE,
+                    targetpos.lat * 1.0e7,  # lat
+                    targetpos.lng * 1.0e7,  # lon
+                    to_alt_frame(targetpos.alt, frame_name),  # alt
+                    0,  # vx
+                    0,  # vy
+                    0,  # vz
+                    0,  # afx
+                    0,  # afy
+                    0,  # afz
+                    math.radians(0),  # yaw
+                    0,  # yawrate
+                )
+                if not self.wait_location(targetpos, accuracy=wp_accuracy, timeout=timeout,
+                                          target_altitude=(targetpos.alt if test_alt else None),
+                                          height_accuracy=2):
+                    raise NotAchievedException()
+                if not self.wait_heading(0, maintain_target_time=5, timeout=timeout):
+                    raise NotAchievedException()
+
+            if test_yaw_rate:
+                self.start_test("Testing Yaw Rate targetting in %s" % frame_name)
+
+                def send_yaw_rate(rate):
+                    self.mav.mav.set_position_target_global_int_send(
+                        0,  # timestamp
+                        1,  # target system_id
+                        1,  # target component id
+                        frame,
+                        MAVLINK_SET_POS_TYPE_MASK_VEL_IGNORE |
+                        MAVLINK_SET_POS_TYPE_MASK_ACC_IGNORE |
+                        MAVLINK_SET_POS_TYPE_MASK_FORCE |
+                        MAVLINK_SET_POS_TYPE_MASK_YAW_IGNORE,
+                        targetpos.lat * 1.0e7,  # lat
+                        targetpos.lng * 1.0e7,  # lon
+                        to_alt_frame(targetpos.alt, frame_name),  # alt
+                        0,  # vx
+                        0,  # vy
+                        0,  # vz
+                        0,  # afx
+                        0,  # afy
+                        0,  # afz
+                        0,  # yaw
+                        rate,  # yawrate
+                    )
+
+                target_rate = 1.0
+                targetpos.lat += 0.0001
+                if test_alt:
+                    targetpos.alt += 5
+                if not self.wait_yaw_speed(target_rate, timeout=timeout,
+                                           the_function=lambda: send_yaw_rate(math.radians(target_rate))):
+                    raise NotAchievedException()
+                if not self.wait_location(targetpos, accuracy=wp_accuracy, timeout=timeout,
+                                          target_altitude=(targetpos.alt if test_alt else None),
+                                          height_accuracy=2):
+                    raise NotAchievedException()
+
+                target_rate = -1.0
+                targetpos.lat -= 0.0001
+                if test_alt:
+                    targetpos.alt -= 5
+                if not self.wait_yaw_speed(target_rate, timeout=timeout,
+                                           the_function=lambda: send_yaw_rate(math.radians(target_rate))):
+                    raise NotAchievedException()
+                if not self.wait_location(targetpos, accuracy=wp_accuracy, timeout=timeout,
+                                          target_altitude=(targetpos.alt if test_alt else None),
+                                          height_accuracy=2):
+                    raise NotAchievedException()
+
+                target_rate = 0.0
+                if not self.wait_yaw_speed(target_rate, timeout=timeout,
+                                           the_function=lambda: send_yaw_rate(math.radians(target_rate))):
+                    raise NotAchievedException()
+
     @abc.abstractmethod
     def autotest(self):
         """Autotest used by ArduPilot autotest CI."""
