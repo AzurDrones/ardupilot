@@ -929,7 +929,7 @@ class AutoTest(ABC):
         tstart = self.get_sim_time()
         if target_altitude is None:
             target_altitude = loc.alt
-        self.progress("Waiting for location"
+        self.progress("Waiting for location "
                       "%.4f,%.4f at altitude %.1f height_accuracy=%.1f" %
                       (loc.lat, loc.lng, target_altitude, height_accuracy))
         while self.get_sim_time() < tstart + timeout:
