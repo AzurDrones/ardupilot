@@ -958,30 +958,33 @@ class AutoTest(ABC):
         current_wp = start_wp
         mode = self.mav.flightmode
 
-        self.progress("\ntest: wait for waypoint ranges start=%u end=%u\n\n"
+        self.progress("\nWait for waypoint ranges start=%u end=%u\n\n"
                       % (wpnum_start, wpnum_end))
         # if start_wp != wpnum_start:
         #    self.progress("test: Expected start waypoint %u but got %u" %
         #                  (wpnum_start, start_wp))
         #    raise WaitWaypointTimeout()
-
+        last_wp_dist = 0.0
+        last_alt = 0.0
         while self.get_sim_time() < tstart + timeout:
             seq = self.mav.waypoint_current()
             m = self.mav.recv_match(type='NAV_CONTROLLER_OUTPUT',
                                     blocking=True)
             wp_dist = m.wp_dist
             m = self.mav.recv_match(type='VFR_HUD', blocking=True)
-
+            current_alt = m.alt
             # if we changed mode, fail
             if self.mav.flightmode != mode:
                 self.progress('Exited %s mode' % mode)
                 raise WaitWaypointTimeout()
-
-            self.progress("test: WP %u (wp_dist=%u Alt=%d), current_wp: %u,"
-                          "wpnum_end: %u" %
-                          (seq, wp_dist, m.alt, current_wp, wpnum_end))
+            if wp_dist != last_wp_dist or current_alt != last_alt:
+                self.progress("WP %u (wp_dist=%u Alt=%d), current_wp: %u,"
+                              "wpnum_end: %u" %
+                              (seq, wp_dist, current_alt, current_wp, wpnum_end))
+                last_wp_dist = wp_dist
+                last_alt = current_alt
             if seq == current_wp+1 or (seq > current_wp+1 and allow_skip):
-                self.progress("test: Starting new waypoint %u" % seq)
+                self.progress("Starting new waypoint %u" % seq)
                 tstart = self.get_sim_time()
                 current_wp = seq
                 # the wp_dist check is a hack until we can sort out
