@@ -921,7 +921,7 @@ class AutoTest(ABC):
 
     def wait_location(self,
                       loc,
-                      accuracy=5,
+                      accuracy=5.0,
                       timeout=30,
                       target_altitude=None,
                       height_accuracy=-1):
