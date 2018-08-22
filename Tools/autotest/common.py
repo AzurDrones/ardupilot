@@ -1382,6 +1382,348 @@ class AutoTest(ABC):
                                            the_function=lambda: send_yaw_rate(math.radians(target_rate))):
                     raise NotAchievedException()
 
+    def test_set_velocity_global_int(self, test_vz=True, test_heading=False, test_yaw_rate=False, timeout=30):
+        """Test set position message in guided mode."""
+        self.set_parameter("FS_GCS_ENABLE", 0)
+        self.set_throttle_zero()
+        self.mavproxy.send('mode guided\n')
+        self.wait_mode('GUIDED')
+        self.wait_ready_to_arm()
+        self.arm_vehicle()
+
+        if self.mav.mav_type in [mavutil.mavlink.MAV_TYPE_QUADROTOR,
+                                 mavutil.mavlink.MAV_TYPE_HELICOPTER,
+                                 mavutil.mavlink.MAV_TYPE_HEXAROTOR,
+                                 mavutil.mavlink.MAV_TYPE_OCTOROTOR,
+                                 mavutil.mavlink.MAV_TYPE_COAXIAL,
+                                 mavutil.mavlink.MAV_TYPE_TRICOPTER,
+                                 mavutil.mavlink.MAV_TYPE_SUBMARINE]:
+            self.user_takeoff(alt_min=50)
+
+        target_vx = 1.0
+        target_vy = 0.0
+        target_vz = 0.0
+        wp_accuracy = None
+        if self.mav.mav_type in [mavutil.mavlink.MAV_TYPE_QUADROTOR,
+                                 mavutil.mavlink.MAV_TYPE_HELICOPTER,
+                                 mavutil.mavlink.MAV_TYPE_HEXAROTOR,
+                                 mavutil.mavlink.MAV_TYPE_OCTOROTOR,
+                                 mavutil.mavlink.MAV_TYPE_COAXIAL,
+                                 mavutil.mavlink.MAV_TYPE_TRICOPTER,
+                                 mavutil.mavlink.MAV_TYPE_SUBMARINE]:
+            wp_accuracy = self.get_parameter("WPNAV_RADIUS", retry=2)
+            wp_accuracy = wp_accuracy * 0.01  # cm to m
+        if self.mav.mav_type in [mavutil.mavlink.MAV_TYPE_FIXED_WING,
+                                 mavutil.mavlink.MAV_TYPE_GROUND_ROVER,
+                                 mavutil.mavlink.MAV_TYPE_SURFACE_BOAT]:
+            wp_accuracy = self.get_parameter("WP_RADIUS", retry=2)
+        if wp_accuracy is None:
+            raise ValueError()
+
+        def send_speed_vector(vx, vy, vz, mav_frame):
+            self.mav.mav.set_position_target_global_int_send(
+                0,  # timestamp
+                1,  # target system_id
+                1,  # target component id
+                mav_frame,
+                MAVLINK_SET_POS_TYPE_MASK_POS_IGNORE |
+                MAVLINK_SET_POS_TYPE_MASK_ACC_IGNORE |
+                MAVLINK_SET_POS_TYPE_MASK_FORCE |
+                MAVLINK_SET_POS_TYPE_MASK_YAW_IGNORE |
+                MAVLINK_SET_POS_TYPE_MASK_YAW_RATE_IGNORE,
+                0,
+                0,
+                0,
+                vx,  # vx
+                vy,  # vy
+                vz,  # vz
+                0,  # afx
+                0,  # afy
+                0,  # afz
+                0,  # yaw
+                0,  # yawrate
+            )
+
+        for frame_name, frame in MAV_FRAMES.items():
+            self.start_test("Testing Set Velocity in %s" % frame_name)
+            if not self.wait_speed_vector(target_vx, target_vy, target_vz, timeout=timeout,
+                                          the_function=lambda: send_speed_vector(target_vx, target_vy, target_vz, frame)):
+                raise NotAchievedException()
+
+            target_vy = 1.0
+            if not self.wait_speed_vector(target_vx, target_vy, target_vz, timeout=timeout,
+                                          the_function=lambda: send_speed_vector(target_vx, target_vy, target_vz, frame)):
+                raise NotAchievedException()
+
+            if test_vz:
+                target_vz = 1.0
+            else:
+                target_vz = 0.0
+            if not self.wait_speed_vector(target_vx, target_vy, target_vz, timeout=timeout,
+                                          the_function=lambda: send_speed_vector(target_vx, target_vy, target_vz, frame)):
+                raise NotAchievedException()
+
+            if test_vz:
+                target_vz = -1.0
+            else:
+                target_vz = 0.0
+            if not self.wait_speed_vector(target_vx, target_vy, target_vz, timeout=timeout,
+                                          the_function=lambda: send_speed_vector(target_vx, target_vy, target_vz, frame)):
+                raise NotAchievedException()
+
+            target_vx = -1.0
+            if not self.wait_speed_vector(target_vx, target_vy, target_vz, timeout=timeout,
+                                          the_function=lambda: send_speed_vector(target_vx, target_vy, target_vz, frame)):
+                raise NotAchievedException()
+
+            target_vy = -1.0
+            if not self.wait_speed_vector(target_vx, target_vy, target_vz, timeout=timeout,
+                                          the_function=lambda: send_speed_vector(target_vx, target_vy, target_vz, frame)):
+                raise NotAchievedException()
+
+            target_vx = 0.0
+            target_vy = 0.0
+            target_vz = 0.0
+            if not self.wait_speed_vector(target_vx, target_vy, target_vz, timeout=timeout,
+                                          the_function=lambda: send_speed_vector(target_vx, target_vy, target_vz, frame)):
+                raise NotAchievedException()
+
+            if test_heading:
+                self.start_test("Testing Yaw targetting in %s" % frame_name)
+
+                def send_yaw_target(yaw, mav_frame):
+                    self.mav.mav.set_position_target_global_int_send(
+                        0,  # timestamp
+                        1,  # target system_id
+                        1,  # target component id
+                        mav_frame,
+                        MAVLINK_SET_POS_TYPE_MASK_POS_IGNORE |
+                        MAVLINK_SET_POS_TYPE_MASK_ACC_IGNORE |
+                        MAVLINK_SET_POS_TYPE_MASK_FORCE |
+                        MAVLINK_SET_POS_TYPE_MASK_YAW_RATE_IGNORE,
+                        0,
+                        0,
+                        0,
+                        0,  # vx
+                        0,  # vy
+                        0,  # vz
+                        0,  # afx
+                        0,  # afy
+                        0,  # afz
+                        yaw,  # yaw
+                        0,  # yawrate
+                    )
+
+                target_vx = 1.0
+                target_vy = 1.0
+                if test_vz:
+                    target_vz = -1.0
+                else:
+                    target_vz = 0.0
+
+                def send_yaw_target_vel(yaw, vx, vy, vz, mav_frame):
+                    self.mav.mav.set_position_target_global_int_send(
+                        0,  # timestamp
+                        1,  # target system_id
+                        1,  # target component id
+                        mav_frame,
+                        MAVLINK_SET_POS_TYPE_MASK_POS_IGNORE |
+                        MAVLINK_SET_POS_TYPE_MASK_ACC_IGNORE |
+                        MAVLINK_SET_POS_TYPE_MASK_FORCE |
+                        MAVLINK_SET_POS_TYPE_MASK_YAW_RATE_IGNORE,
+                        0,
+                        0,
+                        0,
+                        vx,  # vx
+                        vy,  # vy
+                        vz,  # vz
+                        0,  # afx
+                        0,  # afy
+                        0,  # afz
+                        yaw,  # yaw
+                        0,  # yawrate
+                    )
+
+                target_yaw = 42.0
+                if not self.wait_heading(target_yaw, maintain_target_time=5, timeout=timeout,
+                                         the_function=lambda: send_yaw_target(math.radians(target_yaw), frame)):
+                    raise NotAchievedException()
+
+                target_yaw = 0.0
+                if not self.wait_heading(target_yaw, maintain_target_time=5, timeout=timeout,
+                                         the_function=lambda: send_yaw_target(target_yaw, frame)):
+                    raise NotAchievedException()
+
+                target_yaw = 42.0
+                if not self.wait_heading(target_yaw, maintain_target_time=5, timeout=timeout,
+                                         the_function=lambda: send_yaw_target_vel(math.radians(target_yaw),
+                                                                                  target_vx, target_vy,
+                                                                                  target_vz, frame)):
+                    raise NotAchievedException()
+                if not self.wait_speed_vector(target_vx, target_vy, target_vz,
+                                              the_function=lambda: send_yaw_target_vel(math.radians(target_yaw),
+                                                                                       target_vx, target_vy,
+                                                                                       target_vz, frame)):
+                    raise NotAchievedException()
+
+                target_yaw = 0.0
+                target_vx = 0.0
+                target_vy = 0.0
+                target_vz = 0.0
+                if not self.wait_heading(target_yaw, maintain_target_time=5, timeout=timeout,
+                                         the_function=lambda: send_yaw_target_vel(math.radians(target_yaw),
+                                                                                  target_vx, target_vy,
+                                                                                  target_vz, frame)):
+                    raise NotAchievedException()
+                if not self.wait_speed_vector(target_vx, target_vy, target_vz, timeout=timeout,
+                                              the_function=lambda: send_yaw_target_vel(math.radians(target_yaw),
+                                                                                       target_vx, target_vy,
+                                                                                       target_vz, frame)):
+                    raise NotAchievedException()
+
+            if test_yaw_rate:
+                self.start_test("Testing Yaw Rate targetting in %s" % frame_name)
+
+                def send_yaw_rate(rate, mav_frame):
+                    self.mav.mav.set_position_target_global_int_send(
+                        0,  # timestamp
+                        1,  # target system_id
+                        1,  # target component id
+                        mav_frame,
+                        MAVLINK_SET_POS_TYPE_MASK_POS_IGNORE |
+                        MAVLINK_SET_POS_TYPE_MASK_ACC_IGNORE |
+                        MAVLINK_SET_POS_TYPE_MASK_FORCE |
+                        MAVLINK_SET_POS_TYPE_MASK_YAW_IGNORE,
+                        0,
+                        0,
+                        0,
+                        0,  # vx
+                        0,  # vy
+                        0,  # vz
+                        0,  # afx
+                        0,  # afy
+                        0,  # afz
+                        0,  # yaw
+                        rate,  # yawrate
+                    )
+
+                target_vx = 1.0
+                target_vy = 1.0
+                if test_vz:
+                    target_vz = -1.0
+                else:
+                    target_vz = 0.0
+
+                def send_yaw_rate_vel(rate, vx, vy, vz, mav_frame):
+                    self.mav.mav.set_position_target_global_int_send(
+                        0,  # timestamp
+                        1,  # target system_id
+                        1,  # target component id
+                        mav_frame,
+                        MAVLINK_SET_POS_TYPE_MASK_POS_IGNORE |
+                        MAVLINK_SET_POS_TYPE_MASK_ACC_IGNORE |
+                        MAVLINK_SET_POS_TYPE_MASK_FORCE |
+                        MAVLINK_SET_POS_TYPE_MASK_YAW_IGNORE,
+                        0,
+                        0,
+                        0,
+                        vx,  # vx
+                        vy,  # vy
+                        vz,  # vz
+                        0,  # afx
+                        0,  # afy
+                        0,  # afz
+                        0,  # yaw
+                        rate,  # yawrate
+                    )
+
+                target_rate = 1.0
+                if not self.wait_yaw_speed(target_rate, timeout=timeout,
+                                           the_function=lambda: send_yaw_rate(math.radians(target_rate), frame)):
+                    raise NotAchievedException()
+
+                target_rate = -1.0
+                if not self.wait_yaw_speed(target_rate, timeout=timeout,
+                                           the_function=lambda: send_yaw_rate(math.radians(target_rate), frame)):
+                    raise NotAchievedException()
+                target_rate = 0.0
+                if not self.wait_yaw_speed(target_rate, timeout=timeout,
+                                           the_function=lambda: send_yaw_rate(math.radians(target_rate), frame)):
+                    raise NotAchievedException()
+
+                target_rate = 1.0
+                if not self.wait_yaw_speed(target_rate,
+                                           the_function=lambda: send_yaw_rate_vel(math.radians(target_rate),
+                                                                                  target_vx, target_vy,
+                                                                                  target_vz, frame)):
+                    raise NotAchievedException()
+                if not self.wait_speed_vector(target_vx, target_vy, target_vz, timeout=timeout,
+                                              the_function=lambda: send_yaw_rate_vel(math.radians(target_rate),
+                                                                                     target_vx, target_vy,
+                                                                                     target_vz, frame)):
+                    raise NotAchievedException()
+
+                target_rate = -1.0
+                target_vx = -1.0
+                target_vy = -1.0
+                if test_vz:
+                    target_vz = 1.0
+                else:
+                    target_vz = 0.0
+                if not self.wait_yaw_speed(target_rate, timeout=timeout,
+                                           the_function=lambda: send_yaw_rate_vel(math.radians(target_rate),
+                                                                                  target_vx, target_vy,
+                                                                                  target_vz, frame)):
+                    raise NotAchievedException()
+                if not self.wait_speed_vector(target_vx, target_vy, target_vz, timeout=timeout,
+                                              the_function=lambda: send_yaw_rate_vel(math.radians(target_rate),
+                                                                                     target_vx, target_vy,
+                                                                                     target_vz, frame)):
+                    raise NotAchievedException()
+
+                target_rate = 0.0
+                target_vx = 0.0
+                target_vy = 0.0
+                target_vz = 0.0
+                if not self.wait_yaw_speed(target_rate, timeout=timeout,
+                                           the_function=lambda: send_yaw_rate_vel(math.radians(target_rate),
+                                                                                  target_vx, target_vy,
+                                                                                  target_vz, frame)):
+                    raise NotAchievedException()
+                if not self.wait_speed_vector(target_vx, target_vx, target_vx, timeout=timeout,
+                                              the_function=lambda: send_yaw_rate_vel(math.radians(target_rate),
+                                                                                     target_vx, target_vy,
+                                                                                     target_vz, frame)):
+                    raise NotAchievedException()
+
+            current_loc = self.mav.location()
+            if test_vz and current_loc.alt < 30:
+                self.progress("Altitude too low, going to safe altitude")
+                self.mav.mav.set_position_target_global_int_send(
+                    0,  # timestamp
+                    1,  # target system_id
+                    1,  # target component id
+                    mavutil.mavlink.MAV_FRAME_GLOBAL,
+                    MAVLINK_SET_POS_TYPE_MASK_VEL_IGNORE |
+                    MAVLINK_SET_POS_TYPE_MASK_ACC_IGNORE |
+                    MAVLINK_SET_POS_TYPE_MASK_FORCE |
+                    MAVLINK_SET_POS_TYPE_MASK_YAW_RATE_IGNORE,
+                    current_loc.lat * 1.0e7,  # lat
+                    current_loc.lng * 1.0e7,  # lon
+                    40,  # alt
+                    0,  # vx
+                    0,  # vy
+                    0,  # vz
+                    0,  # afx
+                    0,  # afy
+                    0,  # afz
+                    0,  # yaw
+                    0,  # yawrate
+                )
+                if not self.wait_location(current_loc, accuracy=wp_accuracy, timeout=timeout, target_altitude=current_loc.alt,
+                                          height_accuracy=2):
+                    raise NotAchievedException()
+
     @abc.abstractmethod
     def autotest(self):
         """Autotest used by ArduPilot autotest CI."""
