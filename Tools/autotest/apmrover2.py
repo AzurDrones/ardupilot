@@ -640,6 +640,9 @@ class AutoTestRover(AutoTest):
             self.homeloc = self.mav.location()
             self.progress("Home location: %s" % self.homeloc)
 
+            self.wait_ready_to_arm()
+            self.arm_vehicle()
+
             self.mavproxy.send('switch 6\n')  # Manual mode
             self.wait_mode('MANUAL')
 
@@ -688,6 +691,11 @@ class AutoTestRover(AutoTest):
             self.disarm_vehicle()
 
             self.run_test("Test RC overrides", self.test_rc_overrides)
+
+            self.run_test("Test setpoint position",
+                          lambda: self.test_set_position_global_int(test_alt=False))
+            self.run_test("Test setpoint velocity",
+                          lambda: self.test_set_velocity_global_int(test_vz=False))
 
             self.run_test("Download logs", lambda:
                           self.log_download(
