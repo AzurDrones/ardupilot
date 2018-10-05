@@ -81,6 +81,7 @@ void RC_Channel_Copter::init_aux_function(const aux_func_t ch_option, const aux_
     case AVOID_PROXIMITY:
     case INVERTED:
     case WINCH_ENABLE:
+    case MOTOR_FAIL:
         do_aux_function(ch_option, ch_flag);
         break;
     // the following functions do not need to be initialised:
@@ -550,6 +551,18 @@ void RC_Channel_Copter::do_aux_function(const aux_func_t ch_option, const aux_sw
             }
 #endif
             break;
+
+        case MOTOR_FAIL:
+            switch (ch_flag) {
+                case LOW:
+                case MIDDLE:
+                    copter.motors->set_motor_fail_trigger(false);
+                    break;
+                case HIGH:
+                    copter.motors->set_motor_fail_trigger(true);
+                    break;
+            }
+        break;
 
     default:
         RC_Channel::do_aux_function(ch_option, ch_flag);
