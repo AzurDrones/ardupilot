@@ -108,6 +108,10 @@ void AP_MotorsMatrix::output_to_motors()
             }
             break;
     }
+    // check for simulated motor failure
+    if (_motor_fail && (_motor_fail_number > 0) && (_motor_fail_number < AP_MOTORS_MAX_NUM_MOTORS) && (_motor_fail_percent > 0)) {
+        motor_out[_motor_fail_number-1] = motor_out[_motor_fail_number-1] - (motor_out[_motor_fail_number-1] - get_pwm_output_min()) * _motor_fail_percent / 100.0f;
+    }
 
     // send output to each motor
     for (i=0; i<AP_MOTORS_MAX_NUM_MOTORS; i++) {

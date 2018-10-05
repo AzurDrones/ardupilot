@@ -183,6 +183,20 @@ const AP_Param::GroupInfo AP_MotorsMulticopter::var_info[] = {
     // @User: Advanced
     AP_GROUPINFO("BAT_IDX",  39, AP_MotorsMulticopter,  _batt_idx, 0),
 
+    // @Param: FAIL_NUM
+    // @DisplayName: Motor Fail Number
+    // @Description: Controls which motor will slow when simulating a motor-failure
+    // @Range: 1 8
+    // @User: Advanced
+    AP_GROUPINFO("FAIL_NUM", 40, AP_MotorsMulticopter, _motor_fail_number, 0),
+
+    // @Param: FAIL_PCT
+    // @DisplayName: Motor Fail Percentage
+    // @Description: Controls motor failure percentage
+    // @Values: 0:Normal, 10:10, 20:20, 30:30, 40:40, 50:Half Speed, 60:60, 70:70, 80:80, 90:90, 100:Stopped
+    // @User: Advanced
+    AP_GROUPINFO("FAIL_PCT", 41, AP_MotorsMulticopter, _motor_fail_percent, 100),
+
     AP_GROUPEND
 };
 
@@ -624,4 +638,9 @@ void AP_MotorsMulticopter::save_params_on_disarm()
     if (_throttle_hover_learn == HOVER_LEARN_AND_SAVE) {
         _throttle_hover.save();
     }
+}
+
+void AP_MotorsMulticopter::set_motor_fail_trigger(bool fail)
+{
+    _motor_fail = fail;
 }
