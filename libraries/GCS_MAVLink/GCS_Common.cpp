@@ -2005,7 +2005,7 @@ void GCS_MAVLINK::handle_set_mode(mavlink_message_t* msg)
     const MAV_RESULT result = _set_mode_common(_base_mode, _custom_mode);
 
     // send ACK or NAK
-    mavlink_msg_command_ack_send_buf(msg, chan, MAVLINK_MSG_ID_SET_MODE, result);
+    mavlink_msg_command_ack_send_buf(msg, chan, MAVLINK_MSG_ID_SET_MODE, result,0,0,0,0);
 }
 
 /*
@@ -2422,7 +2422,7 @@ MAV_RESULT GCS_MAVLINK::handle_preflight_reboot(const mavlink_command_long_t &pa
     }
 
     // send ack before we reboot
-    mavlink_msg_command_ack_send(chan, packet.command, MAV_RESULT_ACCEPTED);
+    mavlink_msg_command_ack_send(chan, packet.command, MAV_RESULT_ACCEPTED,0,0,0,0);
     // Notify might want to blink some LEDs:
     AP_Notify *notify = AP_Notify::instance();
     if (notify) {
@@ -3487,7 +3487,7 @@ void GCS_MAVLINK::handle_command_long(mavlink_message_t *msg)
     const MAV_RESULT result = handle_command_long_packet(packet);
 
     // send ACK or NAK
-    mavlink_msg_command_ack_send_buf(msg, chan, packet.command, result);
+    mavlink_msg_command_ack_send_buf(msg, chan, packet.command, result,0,0,0,0);
 }
 
 MAV_RESULT GCS_MAVLINK::handle_command_do_set_roi(const Location &roi_loc)
@@ -3573,7 +3573,7 @@ void GCS_MAVLINK::handle_command_int(mavlink_message_t *msg)
     const MAV_RESULT result = handle_command_int_packet(packet);
 
     // send ACK or NAK
-    mavlink_msg_command_ack_send_buf(msg, chan, packet.command, result);
+    mavlink_msg_command_ack_send_buf(msg, chan, packet.command, result,0,0,0,0);
 }
 
 bool GCS_MAVLINK::try_send_compass_message(const enum ap_message id)
